@@ -29,9 +29,7 @@ public:
 
     void DodajNaPoczatek(int wartosc) {
         if (rozmiar == pojemnosc) Powieksz();
-        for (int i = rozmiar; i > 0; i--) {
-            dane[i] = dane[i - 1];
-        }
+        for (int i = rozmiar; i > 0; i--) dane[i] = dane[i - 1];
         dane[0] = wartosc;
         rozmiar++;
     }
@@ -41,23 +39,33 @@ public:
         dane[rozmiar++] = wartosc;
     }
 
+    void DodajNaIndeks(int indeks, int wartosc) {
+        if (indeks < 0 || indeks > rozmiar) return;
+        if (rozmiar == pojemnosc) Powieksz();
+        for (int i = rozmiar; i > indeks; i--) dane[i] = dane[i - 1];
+        dane[indeks] = wartosc;
+        rozmiar++;
+    }
+
     void UsunZPoczatku() {
-        if (rozmiar > 0) {
-            for (int i = 0; i < rozmiar - 1; i++) {
-                dane[i] = dane[i + 1];
-            }
-            rozmiar--;
-        }
+        if (rozmiar == 0) return;
+        for (int i = 0; i < rozmiar - 1; i++) dane[i] = dane[i + 1];
+        rozmiar--;
     }
 
     void UsunZKonca() {
         if (rozmiar > 0) rozmiar--;
     }
 
+    void UsunZIndeksu(int indeks) {
+        if (indeks < 0 || indeks >= rozmiar) return;
+        for (int i = indeks; i < rozmiar - 1; i++) dane[i] = dane[i + 1];
+        rozmiar--;
+    }
+
     int Znajdz(int wartosc) {
-        for (int i = 0; i < rozmiar; i++) {
+        for (int i = 0; i < rozmiar; i++)
             if (dane[i] == wartosc) return i;
-        }
         return -1;
     }
 };
@@ -67,63 +75,90 @@ private:
     struct Wezel {
         int wartosc;
         Wezel* nastepny;
-        Wezel(int wartosc) : wartosc(wartosc), nastepny(nullptr) {}
+        Wezel(int w) : wartosc(w), nastepny(nullptr) {}
     };
 
-    Wezel* PoczatekListy;
+    Wezel* glowa;
 
 public:
-    ListaSekwencyjna() : PoczatekListy(nullptr) {}
+    ListaSekwencyjna() : glowa(nullptr) {}
 
     ~ListaSekwencyjna() {
-        while (PoczatekListy) {
-            Wezel* temp = PoczatekListy;
-            PoczatekListy = PoczatekListy->nastepny;
+        while (glowa) {
+            Wezel* temp = glowa;
+            glowa = glowa->nastepny;
             delete temp;
         }
     }
 
     void DodajNaPoczatek(int wartosc) {
         Wezel* nowy = new Wezel(wartosc);
-        nowy->nastepny = PoczatekListy;
-        PoczatekListy = nowy;
+        nowy->nastepny = glowa;
+        glowa = nowy;
     }
 
     void DodajNaKoniec(int wartosc) {
         Wezel* nowy = new Wezel(wartosc);
-        if (!PoczatekListy) {
-            PoczatekListy = nowy;
+        if (!glowa) {
+            glowa = nowy;
             return;
         }
-        Wezel* temp = PoczatekListy;
+        Wezel* temp = glowa;
         while (temp->nastepny) temp = temp->nastepny;
         temp->nastepny = nowy;
     }
 
+    void DodajNaIndeks(int indeks, int wartosc) {
+        if (indeks < 0) return;
+        if (indeks == 0) {
+            DodajNaPoczatek(wartosc);
+            return;
+        }
+        Wezel* temp = glowa;
+        for (int i = 0; i < indeks - 1 && temp; i++) temp = temp->nastepny;
+        if (!temp) return;
+        Wezel* nowy = new Wezel(wartosc);
+        nowy->nastepny = temp->nastepny;
+        temp->nastepny = nowy;
+    }
+
     void UsunZPoczatku() {
-        if (!PoczatekListy) return;
-        Wezel* temp = PoczatekListy;
-        PoczatekListy = PoczatekListy->nastepny;
+        if (!glowa) return;
+        Wezel* temp = glowa;
+        glowa = glowa->nastepny;
         delete temp;
     }
 
     void UsunZKonca() {
-        if (!PoczatekListy) return;
-        if (!PoczatekListy->nastepny) {
-            delete PoczatekListy;
-            PoczatekListy = nullptr;
+        if (!glowa) return;
+        if (!glowa->nastepny) {
+            delete glowa;
+            glowa = nullptr;
             return;
         }
-        Wezel* temp = PoczatekListy;
-        while (temp->nastepny && temp->nastepny->nastepny) {
-            temp = temp->nastepny;
-        }
+        Wezel* temp = glowa;
+        while (temp->nastepny->nastepny) temp = temp->nastepny;
         delete temp->nastepny;
         temp->nastepny = nullptr;
     }
 
+    void UsunZIndeksu(int indeks) {
+        if (indeks < 0 || !glowa) return;
+        if (indeks == 0) {
+            UsunZPoczatku();
+            return;
+        }
+        Wezel* temp = glowa;
+        for (int i = 0; i < indeks - 1 && temp->nastepny; i++) temp = temp->nastepny;
+        if (temp->nastepny) {
+            Wezel* doUsuniecia = temp->nastepny;
+            temp->nastepny = doUsuniecia->nastepny;
+            delete doUsuniecia;
+        }
+    }
+
     int Znajdz(int wartosc) {
-        Wezel* temp = PoczatekListy;
+        Wezel* temp = glowa;
         int index = 0;
         while (temp) {
             if (temp->wartosc == wartosc) return index;
@@ -135,80 +170,89 @@ public:
 };
 
 int main() {
-    const int N = 10;
-    
+    const int N = 100;
+
     TablicaDynamiczna tablica;
     ListaSekwencyjna lista;
 
-    // Pomiar czasu dodawania na początek - tablica
-    auto start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) tablica.DodajNaPoczatek(i);
-    auto end = std::chrono::high_resolution_clock::now();
-    std::chrono::duration<long long, std::nano> diff = end - start;
-    std::cout << "Czas dodawania na poczatek do tablicy: " << diff.count() << " nanosekund" << std::endl;
-
-    // Pomiar czasu dodawania na początek - lista
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) lista.DodajNaPoczatek(i);
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas dodawania na poczatek do listy: " << diff.count() << " nanosekund" << std::endl;
-
-    // Pomiar czasu dodawania na koniec - tablica
-    start = std::chrono::high_resolution_clock::now();
+    auto start = chrono::high_resolution_clock::now();
     for (int i = 0; i < N; i++) tablica.DodajNaKoniec(i);
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas dodawania na koniec do tablicy: " << diff.count() << " nanosekund" << std::endl;
+    auto end = chrono::high_resolution_clock::now();
+    cout << "Tablica: dodawanie na koniec: " << (end - start).count() << " ns\n";
 
-    // Pomiar czasu dodawania na koniec - lista
-    start = std::chrono::high_resolution_clock::now();
+    start = chrono::high_resolution_clock::now();
     for (int i = 0; i < N; i++) lista.DodajNaKoniec(i);
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas dodawania na koniec do listy: " << diff.count() << " nanosekund" << std::endl;
+    end = chrono::high_resolution_clock::now();
+    cout << "Lista: dodawanie na koniec: " << (end - start).count() << " ns\n";
 
-    // Pomiar czasu usuwania z początku - tablica
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) tablica.UsunZPoczatku();
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas usuwania z poczatku z tablicy: " << diff.count() << " nanosekund" << std::endl;
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < N; i++) tablica.DodajNaPoczatek(i);
+    end = chrono::high_resolution_clock::now();
+    cout << "Tablica: dodawanie na poczatek: " << (end - start).count() << " ns\n";
 
-    // Pomiar czasu usuwania z początku - lista
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) lista.UsunZPoczatku();
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas usuwania z poczatku z listy: " << diff.count() << " nanosekund" << std::endl;
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < N; i++) lista.DodajNaPoczatek(i);
+    end = chrono::high_resolution_clock::now();
+    cout << "Lista: dodawanie na poczatek: " << (end - start).count() << " ns\n";
 
-    // Pomiar czasu usuwania z końca - tablica
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) tablica.UsunZKonca();
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas usuwania z konca z tablicy: " << diff.count() << " nanosekund" << std::endl;
-
-    // Pomiar czasu usuwania z końca - lista
-    start = std::chrono::high_resolution_clock::now();
-    for (int i = 0; i < N; i++) lista.UsunZKonca();
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas usuwania z konca z listy: " << diff.count() << " nanosekund" << std::endl;
-
-    // Pomiar czasu wyszukiwania w tablicy
-    start = std::chrono::high_resolution_clock::now();
+    start = chrono::high_resolution_clock::now();
     for (int i = 0; i < N; i++) tablica.Znajdz(i);
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas wyszukiwania w tablicy: " << diff.count() << " nanosekund" << std::endl;
+    end = chrono::high_resolution_clock::now();
+    cout << "Tablica: szukanie: " << (end - start).count() << " ns\n";
 
-    // Pomiar czasu wyszukiwania w liście
-    start = std::chrono::high_resolution_clock::now();
+    start = chrono::high_resolution_clock::now();
     for (int i = 0; i < N; i++) lista.Znajdz(i);
-    end = std::chrono::high_resolution_clock::now();
-    diff = end - start;
-    std::cout << "Czas wyszukiwania w liscie: " << diff.count() << " nanosekund" << std::endl;
+    end = chrono::high_resolution_clock::now();
+    cout << "Lista: szukanie: " << (end - start).count() << " ns\n";
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < N; i++) tablica.UsunZPoczatku();
+    end = chrono::high_resolution_clock::now();
+    cout << "Tablica: usuwanie z poczatku: " << (end - start).count() << " ns\n";
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < N; i++) lista.UsunZPoczatku();
+    end = chrono::high_resolution_clock::now();
+    cout << "Lista: usuwanie z poczatku: " << (end - start).count() << " ns\n";
+
+    // Dodaj dane ponownie do testów usuwania z końca
+    for (int i = 0; i < N; i++) tablica.DodajNaKoniec(i);
+    for (int i = 0; i < N; i++) lista.DodajNaKoniec(i);
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < N; i++) tablica.UsunZKonca();
+    end = chrono::high_resolution_clock::now();
+    cout << "Tablica: usuwanie z konca: " << (end - start).count() << " ns\n";
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < N; i++) lista.UsunZKonca();
+    end = chrono::high_resolution_clock::now();
+    cout << "Lista: usuwanie z konca: " << (end - start).count() << " ns\n";
+
+    // Dodawanie/usuwanie na indeksie
+    for (int i = 0; i < N; i++) tablica.DodajNaKoniec(i);
+    for (int i = 0; i < N; i++) lista.DodajNaKoniec(i);
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < 100; i++) tablica.DodajNaIndeks(500, i);
+    end = chrono::high_resolution_clock::now();
+    cout << "Tablica: dodawanie na indeks: " << (end - start).count() << " ns\n";
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < 100; i++) lista.DodajNaIndeks(500, i);
+    end = chrono::high_resolution_clock::now();
+    cout << "Lista: dodawanie na indeks: " << (end - start).count() << " ns\n";
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < 100; i++) tablica.UsunZIndeksu(500);
+    end = chrono::high_resolution_clock::now();
+    cout << "Tablica: usuwanie z indeksu: " << (end - start).count() << " ns\n";
+
+    start = chrono::high_resolution_clock::now();
+    for (int i = 0; i < 100; i++) lista.UsunZIndeksu(500);
+    end = chrono::high_resolution_clock::now();
+    cout << "Lista: usuwanie z indeksu: " << (end - start).count() << " ns\n";
 
     return 0;
 }
+
